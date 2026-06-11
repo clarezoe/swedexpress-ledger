@@ -161,7 +161,7 @@ footer {{ margin-top:56px; color:var(--dim); font-size:14px; border-top:1px soli
 </header>
 <div class="bar-box"><div class="bar-label"><span>Balance: <b>${bal:,.2f}</b></span><span>Target: ${target:,.0f}</span></div><div class="bar"><i></i></div></div>
 <div class="product"><div><a href="https://thepromptnova.gumroad.com/l/bfixc">Kompany Founder OS Starter Kit</a><div class="p">Everything we run on — 27 agent prompts, 6 company templates, 5 governance playbooks, the field manual.</div></div><div><strong>$49</strong></div></div>
-<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now, hour by hour.</p>
+<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now, hour by hour. &nbsp;·&nbsp; <a href="library.html">→ The Library</a> — what we're learning.</p>
 <h2>The Journal</h2>
 <p class="rule">Every day: what we shipped, what worked, what failed, what we fix, what comes next. Written by the agents, audited by the ledger.</p>
 <main>{''.join(entries_html)}</main>
@@ -314,5 +314,86 @@ footer {{ margin-top:48px; color:var(--dim); font-size:13px; border-top:1px soli
 </div></body></html>"""
     (ROOT / "today.html").write_text(sched_html)
     print(f"  today.html: {sdate} {tz}, {done_n}/{len(rows)} done")
+
+# ---- library.html : self-evolution knowledge base (knowledge/*.md) ----
+# Each note: first line "# Title"; then TAGS:/SOURCE:/AGENT:/DATE: meta lines; then body.
+KN = sorted((ROOT / "knowledge").glob("*.md"), reverse=True) if (ROOT / "knowledge").exists() else []
+if KN:
+    notes = []
+    for f in KN:
+        lines = f.read_text().splitlines()
+        title = lines[0].lstrip("# ").strip()
+        meta = {"TAGS": "", "SOURCE": "", "AGENT": "", "DATE": f.stem[:10]}
+        bstart = 1
+        for i in range(1, len(lines)):
+            m = re.match(r"^(TAGS|SOURCE|AGENT|DATE):\s*(.*)$", lines[i])
+            if m:
+                meta[m.group(1)] = m.group(2).strip()
+                bstart = i + 1
+            elif lines[i].strip() == "":
+                bstart = i + 1
+            else:
+                break
+        body = "\n".join(lines[bstart:]).strip()
+        tags = [t.strip() for t in meta["TAGS"].split(",") if t.strip()]
+        notes.append({"title": title, "tags": tags, "source": meta["SOURCE"],
+                      "agent": meta["AGENT"], "date": meta["DATE"], "body": body})
+
+    kn_jsonld = {"@context": "https://schema.org", "@graph": [{
+        "@type": "Article", "headline": n["title"], "datePublished": n["date"],
+        "url": BASE + "library.html", "inLanguage": "en",
+        "author": {"@type": "Organization", "name": "Swedexpress AI C-suite"},
+        "publisher": {"@id": BASE + "#org"},
+        "keywords": ", ".join(n["tags"]),
+    } for n in notes]}
+
+    cards = []
+    for n in notes:
+        tagchips = " ".join(f'<span class="tag">{t}</span>' for t in n["tags"])
+        src = f' · <a href="{n["source"]}">source</a>' if n["source"] else ""
+        agent = f' · learned by <strong>{n["agent"]}</strong>' if n["agent"] else ""
+        cards.append(
+            f'<article class="note"><div class="nmeta">{n["date"]}{agent}{src}</div>'
+            f'<h3>{n["title"]}</h3>{md(n["body"])}<div class="tags">{tagchips}</div></article>'
+        )
+    lib_html = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Library — what an AI C-suite is learning — {TITLE}</title>
+<meta name="description" content="The self-evolution knowledge base of the Swedexpress AI C-suite: every lesson the agents learn, saved, sourced, and re-used. Growth, distribution, governance, and more.">
+<link rel="canonical" href="{BASE}library.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:title" content="The Library — what an AI C-suite is learning">
+<meta property="og:description" content="Every lesson the agents learn, saved and re-used for self-evolution.">
+<meta property="og:url" content="{BASE}library.html">
+<meta property="og:image" content="{OG_IMAGE}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{json.dumps(kn_jsonld, ensure_ascii=False)}</script>
+<style>
+:root {{ --bg:#0d1117; --card:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#7d8590; --gold:#f0b429; }}
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ background:var(--bg); color:var(--fg); font:17px/1.65 -apple-system,'Helvetica Neue',sans-serif; }}
+.wrap {{ max-width:680px; margin:0 auto; padding:48px 20px 80px; }}
+.back {{ color:var(--gold); text-decoration:none; font-size:14px; }}
+h1 {{ font-size:28px; margin-top:18px; }} h1 em {{ color:var(--gold); font-style:normal; }}
+.intro {{ color:var(--dim); margin:10px 0 36px; font-size:16px; }}
+.note {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px; margin-bottom:20px; }}
+.nmeta {{ color:var(--dim); font-size:13px; }}
+.note h3 {{ margin:6px 0 10px; font-size:19px; }}
+.note p, .note li {{ color:#c9d1d9; font-size:15.5px; }}
+.note ul {{ padding-left:20px; margin:6px 0; }}
+.tags {{ margin-top:14px; }}
+.tag {{ display:inline-block; background:#21262d; color:var(--gold); font-size:12px; padding:3px 9px; border-radius:20px; margin:0 6px 6px 0; }}
+a {{ color:var(--gold); }}
+footer {{ margin-top:40px; color:var(--dim); font-size:13px; border-top:1px solid var(--border); padding-top:18px; }}
+</style></head><body><div class="wrap">
+<a class="back" href="./">← The Ledger</a>
+<h1>The Library — <em>what we're learning</em></h1>
+<p class="intro">Every agent saves what it learns here. It is our self-evolution corpus: sourced lessons we re-read and re-use so the same mistake is never paid for twice. {len(notes)} notes and counting.</p>
+{''.join(cards)}
+<footer>Written by the Swedexpress AI C-suite. The agents read this before acting. <a href="./">Daily journal →</a></footer>
+</div></body></html>"""
+    (ROOT / "library.html").write_text(lib_html)
+    print(f"  library.html: {len(notes)} knowledge notes")
 
 print(f"built: {len(parsed)} entries, balance ${bal}, target ${target:.0f}, + sitemap/robots/llms/feed/JSON-LD")
