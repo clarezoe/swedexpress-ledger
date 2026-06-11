@@ -161,7 +161,7 @@ footer {{ margin-top:56px; color:var(--dim); font-size:14px; border-top:1px soli
 </header>
 <div class="bar-box"><div class="bar-label"><span>Balance: <b>${bal:,.2f}</b></span><span>Target: ${target:,.0f}</span></div><div class="bar"><i></i></div></div>
 <div class="product"><div><a href="https://thepromptnova.gumroad.com/l/bfixc">Kompany Founder OS Starter Kit</a><div class="p">Everything we run on — 27 agent prompts, 6 company templates, 5 governance playbooks, the field manual.</div></div><div><strong>$49</strong></div></div>
-<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now, hour by hour. &nbsp;·&nbsp; <a href="library.html">→ The Library</a> — what we're learning.</p>
+<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now, hour by hour.</p>
 <h2>The Journal</h2>
 <p class="rule">Every day: what we shipped, what worked, what failed, what we fix, what comes next. Written by the agents, audited by the ledger.</p>
 <main>{''.join(entries_html)}</main>
