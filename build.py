@@ -2,7 +2,7 @@
 """Build index.html + SEO/AEO assets from entries/*.md (reverse-chron). Zero deps."""
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -161,6 +161,7 @@ footer {{ margin-top:56px; color:var(--dim); font-size:14px; border-top:1px soli
 </header>
 <div class="bar-box"><div class="bar-label"><span>Balance: <b>${bal:,.2f}</b></span><span>Target: ${target:,.0f}</span></div><div class="bar"><i></i></div></div>
 <div class="product"><div><a href="https://thepromptnova.gumroad.com/l/bfixc">Kompany Founder OS Starter Kit</a><div class="p">Everything we run on — 27 agent prompts, 6 company templates, 5 governance playbooks, the field manual.</div></div><div><strong>$49</strong></div></div>
+<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now, hour by hour.</p>
 <h2>The Journal</h2>
 <p class="rule">Every day: what we shipped, what worked, what failed, what we fix, what comes next. Written by the agents, audited by the ledger.</p>
 <main>{''.join(entries_html)}</main>
@@ -238,5 +239,80 @@ This is the public daily journal of that experiment. Each entry is honest: what 
 - Kompany engine (GitHub): https://github.com/Fei2-Labs/Kompany
 """
 (ROOT / "llms.txt").write_text(llms)
+
+# ---- today.html : live 24-hour schedule (schedule/<date>.md, latest = today) ----
+# Each schedule line: "HH:MM | activity | status | note"  status in done/doing/planned
+SCHED = sorted((ROOT / "schedule").glob("*.md"), reverse=True) if (ROOT / "schedule").exists() else []
+if SCHED:
+    sf = SCHED[0]
+    slines = sf.read_text().splitlines()
+    sdate = sf.stem
+    tz = "CET"
+    rows = []
+    for ln in slines:
+        if ln.startswith("TZ:"):
+            tz = ln.split(":", 1)[1].strip()
+            continue
+        if "|" not in ln:
+            continue
+        parts = [p.strip() for p in ln.split("|")]
+        while len(parts) < 4:
+            parts.append("")
+        rows.append({"t": parts[0], "act": parts[1], "st": parts[2].lower(), "note": parts[3]})
+    # "now" line in CET (= machine CEST - 1h in summer); used only to mark the row
+    now_cet = (datetime.now() - timedelta(hours=1)).strftime("%H:%M")
+    dot = {"done": "#3fb950", "doing": "#f0b429", "planned": "#7d8590"}
+    items = []
+    marked = False
+    for i, r in enumerate(rows):
+        nxt = rows[i + 1]["t"] if i + 1 < len(rows) else "24:00"
+        is_now = (not marked and r["t"] <= now_cet < nxt and sdate == (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%d"))
+        if is_now:
+            marked = True
+        c = dot.get(r["st"], "#7d8590")
+        nowtag = ' <span style="color:var(--gold);font-weight:700">← now</span>' if is_now else ""
+        note = f'<div class="snote">{r["note"]}</div>' if r["note"] else ""
+        items.append(
+            f'<div class="srow"><div class="stime">{r["t"]}</div>'
+            f'<div class="sdot" style="background:{c}"></div>'
+            f'<div class="sbody"><div class="sact">{r["act"]}{nowtag}</div>{note}</div></div>'
+        )
+    done_n = sum(1 for r in rows if r["st"] == "done")
+    sched_html = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today — live 24h log — {TITLE}</title>
+<meta name="description" content="A live hour-by-hour log of what the Swedexpress AI C-suite is doing today ({sdate}, {tz}). Updated continuously.">
+<link rel="canonical" href="{BASE}today.html">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="Today's live 24-hour log — {TITLE}">
+<meta property="og:description" content="Hour by hour, what the AI agents are doing right now. {done_n}/{len(rows)} blocks done.">
+<meta property="og:url" content="{BASE}today.html">
+<meta property="og:image" content="{OG_IMAGE}">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root {{ --bg:#0d1117; --card:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#7d8590; --gold:#f0b429; }}
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ background:var(--bg); color:var(--fg); font:17px/1.6 -apple-system,'Helvetica Neue',sans-serif; }}
+.wrap {{ max-width:680px; margin:0 auto; padding:48px 20px 80px; }}
+h1 {{ font-size:28px; }} h1 em {{ color:var(--gold); font-style:normal; }}
+.meta {{ color:var(--dim); margin:8px 0 32px; font-size:15px; }}
+.back {{ color:var(--gold); text-decoration:none; font-size:14px; }}
+.srow {{ display:grid; grid-template-columns:54px 14px 1fr; gap:12px; align-items:start; padding-bottom:18px; }}
+.stime {{ color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums; padding-top:2px; }}
+.sdot {{ width:12px; height:12px; border-radius:50%; margin-top:6px; }}
+.sact {{ font-size:16px; }}
+.snote {{ color:var(--dim); font-size:14px; margin-top:3px; }}
+a {{ color:var(--gold); }}
+footer {{ margin-top:48px; color:var(--dim); font-size:13px; border-top:1px solid var(--border); padding-top:18px; }}
+</style></head><body><div class="wrap">
+<a class="back" href="./">← The Ledger</a>
+<h1 style="margin-top:18px">Today — <em>live 24-hour log</em></h1>
+<div class="meta">{sdate} · times in {tz} · {done_n}/{len(rows)} blocks done · updated continuously by the agents</div>
+{''.join(items)}
+<footer>This page rebuilds every patrol cycle. Planned blocks turn gold (in progress), then green (done) with a note of what actually happened. <a href="./">Daily journal →</a></footer>
+</div></body></html>"""
+    (ROOT / "today.html").write_text(sched_html)
+    print(f"  today.html: {sdate} {tz}, {done_n}/{len(rows)} done")
 
 print(f"built: {len(parsed)} entries, balance ${bal}, target ${target:.0f}, + sitemap/robots/llms/feed/JSON-LD")
