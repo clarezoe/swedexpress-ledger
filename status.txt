@@ -1,2 +1,2 @@
 balance=48.76
-target=1800
+target=1080
