@@ -261,18 +261,16 @@ def render_day(sf, prev_name, next_name, is_today):
     items = []; marked = False
     for i, r in enumerate(rows):
         nxt = rows[i + 1]["t"] if i + 1 < len(rows) else "24:00"
-        is_now = (not marked and r["t"] <= now_cet < nxt and sdate == today_cet)
-        if is_now: marked = True
         c = dot.get(r["st"], "#7d8590")
-        nowtag = ' <span style="color:var(--gold);font-weight:700">← now</span>' if is_now else ""
         note = f'<div class="snote">{r["note"]}</div>' if r["note"] else ""
-        items.append(f'<div class="srow"><div class="stime">{r["t"]}</div>'
+        items.append(f'<div class="srow" data-t="{r["t"]}"><div class="stime">{r["t"]}</div>'
                      f'<div class="sdot" style="background:{c}"></div>'
-                     f'<div class="sbody"><div class="sact">{r["act"]}{nowtag}</div>{note}</div></div>')
+                     f'<div class="sbody"><div class="sact">{r["act"]}<span class="nowtag"></span></div>{note}</div></div>')
     done_n = sum(1 for r in rows if r["st"] == "done")
     prev_link = f'<a href="{prev_name}">← {prev_name.replace("day-","").replace(".html","")}</a>' if prev_name else ""
     next_link = (f'<a href="{next_name}">{next_name.replace("day-","").replace(".html","") if next_name != "today.html" else "latest"} →</a>') if next_name else ""
     nav = f'<div class="nav">{prev_link}<span></span>{next_link}</div>' if (prev_link or next_link) else ""
+    now_script = ("<script>(function(){var page=\"" + sdate + "\";var now=new Date(Date.now()+(60+new Date().getTimezoneOffset())*60000);var d=now.toISOString().slice(0,10);if(d!==page)return;var hm=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);var rows=[].slice.call(document.querySelectorAll('.srow'));var cur=null;rows.forEach(function(r){if(r.getAttribute('data-t')<=hm)cur=r});if(cur){var s=cur.querySelector('.nowtag');if(s)s.innerHTML=\" <b style=&quot;color:#f0b429&quot;>← now</b>\"}})();</script>") if is_today else ""
     fname = "today.html" if is_today else f"day-{sdate}.html"
     title_label = "Today — live 24-hour log" if is_today else f"{sdate} — 24-hour log"
     html = f"""<!doctype html>
@@ -311,7 +309,7 @@ footer {{ margin-top:48px; color:var(--dim); font-size:13px; border-top:1px soli
 {nav}
 {"".join(items)}
 <footer>Planned blocks turn gold (in progress), then green (done) with a note of what actually happened. <a href="./">Daily journal →</a></footer>
-</div></body></html>"""
+</div>{now_script}</body></html>"""
     (ROOT / fname).write_text(html)
     return fname, done_n, len(rows)
 
