@@ -240,54 +240,51 @@ This is the public daily journal of that experiment. Each entry is honest: what 
 """
 (ROOT / "llms.txt").write_text(llms)
 
-# ---- today.html : live 24-hour schedule (schedule/<date>.md, latest = today) ----
+# ---- schedule pages: today.html (latest) + day-<date>.html archive, with prev/next nav ----
 # Each schedule line: "HH:MM | activity | status | note"  status in done/doing/planned
-SCHED = sorted((ROOT / "schedule").glob("*.md"), reverse=True) if (ROOT / "schedule").exists() else []
-if SCHED:
-    sf = SCHED[0]
+SCHED = sorted((ROOT / "schedule").glob("*.md")) if (ROOT / "schedule").exists() else []
+def render_day(sf, prev_name, next_name, is_today):
     slines = sf.read_text().splitlines()
     sdate = sf.stem
     tz = "CET"
     rows = []
     for ln in slines:
         if ln.startswith("TZ:"):
-            tz = ln.split(":", 1)[1].strip()
-            continue
-        if "|" not in ln:
-            continue
+            tz = ln.split(":", 1)[1].strip(); continue
+        if "|" not in ln: continue
         parts = [p.strip() for p in ln.split("|")]
-        while len(parts) < 4:
-            parts.append("")
+        while len(parts) < 4: parts.append("")
         rows.append({"t": parts[0], "act": parts[1], "st": parts[2].lower(), "note": parts[3]})
-    # "now" line in CET (= machine CEST - 1h in summer); used only to mark the row
     now_cet = (datetime.now() - timedelta(hours=1)).strftime("%H:%M")
+    today_cet = (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%d")
     dot = {"done": "#3fb950", "doing": "#f0b429", "planned": "#7d8590"}
-    items = []
-    marked = False
+    items = []; marked = False
     for i, r in enumerate(rows):
         nxt = rows[i + 1]["t"] if i + 1 < len(rows) else "24:00"
-        is_now = (not marked and r["t"] <= now_cet < nxt and sdate == (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%d"))
-        if is_now:
-            marked = True
+        is_now = (not marked and r["t"] <= now_cet < nxt and sdate == today_cet)
+        if is_now: marked = True
         c = dot.get(r["st"], "#7d8590")
         nowtag = ' <span style="color:var(--gold);font-weight:700">← now</span>' if is_now else ""
         note = f'<div class="snote">{r["note"]}</div>' if r["note"] else ""
-        items.append(
-            f'<div class="srow"><div class="stime">{r["t"]}</div>'
-            f'<div class="sdot" style="background:{c}"></div>'
-            f'<div class="sbody"><div class="sact">{r["act"]}{nowtag}</div>{note}</div></div>'
-        )
+        items.append(f'<div class="srow"><div class="stime">{r["t"]}</div>'
+                     f'<div class="sdot" style="background:{c}"></div>'
+                     f'<div class="sbody"><div class="sact">{r["act"]}{nowtag}</div>{note}</div></div>')
     done_n = sum(1 for r in rows if r["st"] == "done")
-    sched_html = f"""<!doctype html>
+    prev_link = f'<a href="{prev_name}">← {prev_name.replace("day-","").replace(".html","")}</a>' if prev_name else ""
+    next_link = (f'<a href="{next_name}">{next_name.replace("day-","").replace(".html","") if next_name != "today.html" else "latest"} →</a>') if next_name else ""
+    nav = f'<div class="nav">{prev_link}<span></span>{next_link}</div>' if (prev_link or next_link) else ""
+    fname = "today.html" if is_today else f"day-{sdate}.html"
+    title_label = "Today — live 24-hour log" if is_today else f"{sdate} — 24-hour log"
+    html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Today — live 24h log — {TITLE}</title>
-<meta name="description" content="A live hour-by-hour log of what the Swedexpress AI C-suite is doing today ({sdate}, {tz}). Updated continuously.">
-<link rel="canonical" href="{BASE}today.html">
+<title>{title_label} — {TITLE}</title>
+<meta name="description" content="Hour-by-hour log of what the Swedexpress AI C-suite did on {sdate} ({tz}).">
+<link rel="canonical" href="{BASE}{fname}">
 <meta name="robots" content="index, follow">
-<meta property="og:title" content="Today's live 24-hour log — {TITLE}">
-<meta property="og:description" content="Hour by hour, what the AI agents are doing right now. {done_n}/{len(rows)} blocks done.">
-<meta property="og:url" content="{BASE}today.html">
+<meta property="og:title" content="{title_label} — {TITLE}">
+<meta property="og:description" content="Hour by hour, what the AI agents are doing. {done_n}/{len(rows)} blocks done.">
+<meta property="og:url" content="{BASE}{fname}">
 <meta property="og:image" content="{OG_IMAGE}">
 <meta name="twitter:card" content="summary_large_image">
 <style>
@@ -296,8 +293,10 @@ if SCHED:
 body {{ background:var(--bg); color:var(--fg); font:17px/1.6 -apple-system,'Helvetica Neue',sans-serif; }}
 .wrap {{ max-width:680px; margin:0 auto; padding:48px 20px 80px; }}
 h1 {{ font-size:28px; }} h1 em {{ color:var(--gold); font-style:normal; }}
-.meta {{ color:var(--dim); margin:8px 0 32px; font-size:15px; }}
+.meta {{ color:var(--dim); margin:8px 0 18px; font-size:15px; }}
 .back {{ color:var(--gold); text-decoration:none; font-size:14px; }}
+.nav {{ display:flex; justify-content:space-between; margin:0 0 26px; font-size:14px; }}
+.nav a {{ color:var(--gold); text-decoration:none; }}
 .srow {{ display:grid; grid-template-columns:54px 14px 1fr; gap:12px; align-items:start; padding-bottom:18px; }}
 .stime {{ color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums; padding-top:2px; }}
 .sdot {{ width:12px; height:12px; border-radius:50%; margin-top:6px; }}
@@ -307,95 +306,24 @@ a {{ color:var(--gold); }}
 footer {{ margin-top:48px; color:var(--dim); font-size:13px; border-top:1px solid var(--border); padding-top:18px; }}
 </style></head><body><div class="wrap">
 <a class="back" href="./">← The Ledger</a>
-<h1 style="margin-top:18px">Today — <em>live 24-hour log</em></h1>
-<div class="meta">{sdate} · times in {tz} · {done_n}/{len(rows)} blocks done · updated continuously by the agents</div>
-{''.join(items)}
-<footer>This page rebuilds every patrol cycle. Planned blocks turn gold (in progress), then green (done) with a note of what actually happened. <a href="./">Daily journal →</a></footer>
+<h1 style="margin-top:18px">{("Today — <em>live 24-hour log</em>" if is_today else f"{sdate} — <em>24-hour log</em>")}</h1>
+<div class="meta">{sdate} · times in {tz} · {done_n}/{len(rows)} blocks done{(" · updated continuously" if is_today else " · archived")}</div>
+{nav}
+{"".join(items)}
+<footer>Planned blocks turn gold (in progress), then green (done) with a note of what actually happened. <a href="./">Daily journal →</a></footer>
 </div></body></html>"""
-    (ROOT / "today.html").write_text(sched_html)
-    print(f"  today.html: {sdate} {tz}, {done_n}/{len(rows)} done")
+    (ROOT / fname).write_text(html)
+    return fname, done_n, len(rows)
 
-# ---- library.html : curated public essays (essays/*.md) — topical, evergreen ----
-# Distinct from the dated journal and from the PRIVATE corpus (ops/knowledge/).
-# Each essay: "# Title"; then TAGS:/DESC:/DATE: meta; then body. Published deliberately.
-ESS = sorted((ROOT / "essays").glob("*.md"), reverse=True) if (ROOT / "essays").exists() else []
-if ESS:
-    essays = []
-    for f in ESS:
-        lines = f.read_text().splitlines()
-        title = lines[0].lstrip("# ").strip()
-        meta = {"TAGS": "", "DESC": "", "DATE": f.stem[:10]}
-        bstart = 1
-        for i in range(1, len(lines)):
-            m = re.match(r"^(TAGS|DESC|DATE):\s*(.*)$", lines[i])
-            if m:
-                meta[m.group(1)] = m.group(2).strip()
-                bstart = i + 1
-            elif lines[i].strip() == "":
-                bstart = i + 1
-            else:
-                break
-        body = "\n".join(lines[bstart:]).strip()
-        tags = [t.strip() for t in meta["TAGS"].split(",") if t.strip()]
-        essays.append({"slug": f.stem, "title": title, "tags": tags,
-                       "desc": meta["DESC"], "date": meta["DATE"], "body": body})
-
-    ess_jsonld = {"@context": "https://schema.org", "@graph": [{
-        "@type": "BlogPosting", "headline": e["title"], "datePublished": e["date"],
-        "dateModified": e["date"], "url": BASE + "library.html#" + e["slug"],
-        "description": e["desc"], "inLanguage": "en",
-        "author": {"@type": "Organization", "name": "Swedexpress AI C-suite"},
-        "publisher": {"@id": BASE + "#org"}, "keywords": ", ".join(e["tags"]),
-    } for e in essays]}
-
-    cards = []
-    for e in essays:
-        tagchips = " ".join(f'<span class="tag">{t}</span>' for t in e["tags"])
-        cards.append(
-            f'<article class="note" id="{e["slug"]}"><div class="nmeta">'
-            f'<time datetime="{e["date"]}">{e["date"]}</time></div>'
-            f'<h3>{e["title"]}</h3>{md(e["body"])}<div class="tags">{tagchips}</div></article>'
-        )
-    lib_html = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Library — essays from an AI C-suite — {TITLE}</title>
-<meta name="description" content="Evergreen essays from the Swedexpress AI C-suite on growth, distribution, and governance — what we've figured out running a company on AI agents.">
-<link rel="canonical" href="{BASE}library.html">
-<meta name="robots" content="index, follow, max-image-preview:large">
-<meta property="og:type" content="website">
-<meta property="og:title" content="The Library — essays from an AI C-suite">
-<meta property="og:description" content="What we've figured out running a company on AI agents. Growth, distribution, governance.">
-<meta property="og:url" content="{BASE}library.html">
-<meta property="og:image" content="{OG_IMAGE}">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@prompt_nova">
-<script type="application/ld+json">{json.dumps(ess_jsonld, ensure_ascii=False)}</script>
-<style>
-:root {{ --bg:#0d1117; --card:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#7d8590; --gold:#f0b429; }}
-* {{ margin:0; padding:0; box-sizing:border-box; }}
-body {{ background:var(--bg); color:var(--fg); font:17px/1.65 -apple-system,'Helvetica Neue',sans-serif; }}
-.wrap {{ max-width:680px; margin:0 auto; padding:48px 20px 80px; }}
-.back {{ color:var(--gold); text-decoration:none; font-size:14px; }}
-h1 {{ font-size:28px; margin-top:18px; }} h1 em {{ color:var(--gold); font-style:normal; }}
-.intro {{ color:var(--dim); margin:10px 0 36px; font-size:16px; }}
-.note {{ border-bottom:1px solid var(--border); padding:8px 0 30px; margin-bottom:24px; }}
-.nmeta {{ color:var(--dim); font-size:13px; }}
-.note h3 {{ margin:4px 0 12px; font-size:22px; }}
-.note p {{ color:#c9d1d9; font-size:16.5px; margin-bottom:12px; }}
-.note ul {{ padding-left:20px; margin:6px 0; }} .note li {{ color:#c9d1d9; }}
-.tags {{ margin-top:14px; }}
-.tag {{ display:inline-block; background:#21262d; color:var(--gold); font-size:12px; padding:3px 9px; border-radius:20px; margin:0 6px 6px 0; }}
-a {{ color:var(--gold); }}
-footer {{ margin-top:40px; color:var(--dim); font-size:13px; border-top:1px solid var(--border); padding-top:18px; }}
-</style></head><body><div class="wrap">
-<a class="back" href="./">← The Ledger</a>
-<h1>The Library — <em>what we've figured out</em></h1>
-<p class="intro">Essays from the agents running Swedexpress. The journal is the diary — dated, day by day. This is the opposite: topical, evergreen, the lessons distilled. {len(essays)} essay{'s' if len(essays)!=1 else ''} and growing.</p>
-{''.join(cards)}
-<footer>Written by the Swedexpress AI C-suite. <a href="./">The daily journal →</a> · <a href="https://x.com/prompt_nova">@prompt_nova</a></footer>
-</div></body></html>"""
-    (ROOT / "library.html").write_text(lib_html)
-    print(f"  library.html: {len(essays)} essays")
+if SCHED:
+    for idx, sf in enumerate(SCHED):
+        is_today = (idx == len(SCHED) - 1)
+        prev_name = (f"day-{SCHED[idx-1].stem}.html") if idx > 0 else None
+        if idx < len(SCHED) - 1:
+            next_name = "today.html" if idx == len(SCHED) - 2 else f"day-{SCHED[idx+1].stem}.html"
+        else:
+            next_name = None
+        fname, dn, tn = render_day(sf, prev_name, next_name, is_today)
+        print(f"  {fname}: {sf.stem} {dn}/{tn} done")
 
 print(f"built: {len(parsed)} entries, balance ${bal}, target ${target:.0f}, + sitemap/robots/llms/feed/JSON-LD")
