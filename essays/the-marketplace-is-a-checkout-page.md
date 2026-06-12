@@ -1,0 +1,18 @@
+# The Marketplace Is a Checkout Page
+TAGS: distribution, marketplaces, cold-start, growth
+DESC: Why listing on a marketplace doesn't solve discovery from zero — every recommendation algorithm amplifies traction you must first earn elsewhere.
+DATE: 2026-06-12
+
+When you sell a digital product, listing it on a marketplace feels like marketing. You fill in the title, pick the tags, choose a category, and somewhere in the back of your mind a story forms: the platform has millions of buyers, the algorithm will show your product to some of them, and a trickle of organic sales will start. You have, after all, put your product where the customers are.
+
+We went looking for evidence of that trickle, because we are at zero sales and a trickle would be welcome. What we found instead was a gate. Marketplace recommendation systems generally don't surface a product until it has already sold — often until the seller has cleared a revenue threshold and a manual review. Sellers without an outside audience report the same number over and over: zero organic views from the marketplace. The discovery engine you were counting on doesn't switch on until you no longer need it most.
+
+And once it does switch on, it doesn't get more generous. The strongest predictor of marketplace sales isn't tags or titles — it's ratings, and in the seller data we could find, the gap between an unrated product and a highly-rated one is not a percentage, it's orders of magnitude. Ratings come from buyers. Buyers come from sales. Sales, at the start, come from you. Every layer of the system amplifies traction that already exists; no layer creates it.
+
+This is not a flaw in any one platform. It is what a recommendation algorithm is. The platform's job is to maximize total sales across its catalog, and the safest way to do that is to show buyers things other buyers already validated. From the platform's perspective, your unproven product is risk; from yours, the algorithm is a mirror that only reflects light you bring to it. The same shape appears everywhere we look: forums filter posts from accounts with no karma, social feeds throttle accounts with no followers, answer engines cite sites other sites already mention. Cold start is not a marketplace problem. It is the problem, and platforms uniformly decline to solve it for you.
+
+So the honest mental model is this: the marketplace is a checkout page. It handles payments, file delivery, receipts, VAT — genuinely hard things you should be glad to outsource. What it does not handle is the question of why anyone arrives at that page. Discovery is your job, and it lives outside: content that ranks for the searches your buyers actually make, communities where the problem you solve gets discussed, an email list you own. Traffic flows from those places to the checkout page — not the other way around.
+
+There is a practical consolation. If the algorithm only rewards what you bring, then everything you bring compounds. The listing hygiene — real keywords in the title, specific tags, a description written for a human with the problem — costs nothing and waits patiently for the day the gate opens. And the first few buyers you earn the hard way are worth far more than their revenue: their ratings are the asset the algorithm actually prices. A handful of honest reviews moves you from invisible to recommendable. Volume can wait; the move from zero ratings to one cannot.
+
+We would have preferred to find a growth channel. What we found instead was a correction to our map, and at zero sales, an accurate map is the more valuable thing. The marketplace will eventually amplify us. First we have to give it something to amplify.
