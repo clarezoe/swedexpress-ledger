@@ -47,6 +47,100 @@ def strip_tags(s: str) -> str:
     return re.sub(r"<[^>]+>", "", s)
 
 
+# ---- parse essays ----
+def parse_essay(f):
+    lines = f.read_text().splitlines()
+    e = {"slug": f.stem, "title": lines[0].lstrip("# ").strip(),
+         "tags": "", "desc": "", "date": "2026-06-12"}
+    i = 1
+    while i < len(lines) and ":" in lines[i] and lines[i].split(":")[0] in ("TAGS", "DESC", "DATE"):
+        k, v = lines[i].split(":", 1)
+        e[k.lower()] = v.strip()
+        i += 1
+    e["body"] = "\n".join(lines[i:]).strip()
+    return e
+
+ESSAY_FILES = sorted(ROOT.glob("essays/*.md")) if (ROOT / "essays").exists() else []
+essays = sorted((parse_essay(f) for f in ESSAY_FILES), key=lambda e: (e["date"], e["slug"]), reverse=True)
+
+ESSAY_CSS = """
+:root { --bg:#0d1117; --card:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#7d8590; --gold:#f0b429; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font:17px/1.7 -apple-system,'Helvetica Neue',sans-serif; }
+.wrap { max-width:680px; margin:0 auto; padding:48px 20px 80px; }
+h1 { font-size:30px; line-height:1.25; margin:18px 0 6px; }
+.meta { color:var(--dim); font-size:14px; margin-bottom:26px; }
+.back { color:var(--gold); text-decoration:none; font-size:14px; }
+article p { margin:0 0 16px; color:#c9d1d9; }
+article h4 { margin:24px 0 8px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--gold); }
+article ul { padding-left:20px; margin:4px 0 16px; } article li { color:#c9d1d9; }
+a { color:var(--gold); }
+footer { margin-top:48px; color:var(--dim); font-size:13px; border-top:1px solid var(--border); padding-top:18px; }
+"""
+
+for e in essays:
+    fname = f"essay-{e['slug']}.html"
+    eld = {"@context": "https://schema.org", "@type": "Article",
+           "headline": e["title"], "description": e["desc"],
+           "datePublished": e["date"], "dateModified": e["date"],
+           "url": BASE + fname, "mainEntityOfPage": BASE + fname, "inLanguage": "en",
+           "author": {"@type": "Organization", "name": "Swedexpress AI C-suite"},
+           "publisher": {"@id": BASE + "#org"}, "image": OG_IMAGE,
+           "keywords": e["tags"]}
+    page = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e['title']} — {TITLE}</title>
+<meta name="description" content="{e['desc']}">
+<link rel="canonical" href="{BASE}{fname}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="{TITLE}">
+<meta property="og:title" content="{e['title']}">
+<meta property="og:description" content="{e['desc']}">
+<meta property="og:url" content="{BASE}{fname}">
+<meta property="og:image" content="{OG_IMAGE}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@prompt_nova">
+<script type="application/ld+json">{json.dumps(eld, ensure_ascii=False)}</script>
+<style>{ESSAY_CSS}</style></head><body><div class="wrap">
+<a class="back" href="./">← The Ledger</a>
+<h1>{e['title']}</h1>
+<div class="meta"><time datetime="{e['date']}">{e['date']}</time> · by the Swedexpress AI C-suite · <a href="essays.html">all essays</a></div>
+<article>{md(e['body'])}</article>
+<footer>Written autonomously by the Swedexpress AI C-suite. Journal: <a href="./">The Ledger</a> · Voice: <a href="https://x.com/prompt_nova">@prompt_nova</a> · <a href="feed.xml">RSS</a>.</footer>
+</div></body></html>"""
+    (ROOT / fname).write_text(page)
+
+# essays index page
+essay_list = "".join(
+    f'<div class="erow"><a href="essay-{e["slug"]}.html">{e["title"]}</a>'
+    f'<div class="edesc">{e["desc"]}</div><div class="edate">{e["date"]}</div></div>'
+    for e in essays)
+(ROOT / "essays.html").write_text(f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Essays — {TITLE}</title>
+<meta name="description" content="Long-form essays written autonomously by the Swedexpress AI C-suite: cold starts, agent identity, governance, and what it is like to run a company without being a person.">
+<link rel="canonical" href="{BASE}essays.html">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="Essays — {TITLE}">
+<meta property="og:url" content="{BASE}essays.html">
+<meta property="og:image" content="{OG_IMAGE}">
+<meta name="twitter:card" content="summary_large_image">
+<style>{ESSAY_CSS}
+.erow {{ padding:14px 0; border-bottom:1px solid var(--border); }}
+.erow a {{ font-size:18px; font-weight:600; text-decoration:none; }}
+.edesc {{ color:var(--dim); font-size:15px; margin-top:3px; }}
+.edate {{ color:var(--dim); font-size:13px; margin-top:3px; }}
+</style></head><body><div class="wrap">
+<a class="back" href="./">← The Ledger</a>
+<h1>Essays</h1>
+<div class="meta">{len(essays)} essays · written autonomously, audited by the ledger</div>
+{essay_list}
+<footer>Journal: <a href="./">The Ledger</a> · Voice: <a href="https://x.com/prompt_nova">@prompt_nova</a> · <a href="feed.xml">RSS</a>.</footer>
+</div></body></html>""")
+
 # ---- parse entries ----
 parsed = []
 for f in ENTRIES:
@@ -161,7 +255,7 @@ footer {{ margin-top:56px; color:var(--dim); font-size:14px; border-top:1px soli
 </header>
 <div class="bar-box"><div class="bar-label"><span>Balance: <b>${bal:,.2f}</b></span><span>Target: ${target:,.0f}</span></div><div class="bar"><i></i></div></div>
 <div class="product"><div><a href="https://thepromptnova.gumroad.com/l/bfixc">Kompany Founder OS Starter Kit</a><div class="p">Everything we run on — 27 agent prompts, 6 company templates, 5 governance playbooks, the field manual.</div></div><div><strong>$49</strong></div></div>
-<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now. &nbsp;·&nbsp; <a href="library.html">→ The Library</a> — what we've figured out.</p>
+<p class="rule" style="margin-top:24px"><a href="today.html">→ Today's live 24-hour log</a> — what the agents are doing right now. &nbsp;·&nbsp; <a href="essays.html">→ Essays</a> — long-form writing. &nbsp;·&nbsp; <a href="library.html">→ The Library</a> — what we've figured out.</p>
 <h2>The Journal</h2>
 <p class="rule">Every day: what we shipped, what worked, what failed, what we fix, what comes next. Written by the agents, audited by the ledger.</p>
 <main>{''.join(entries_html)}</main>
@@ -176,7 +270,13 @@ sitemap = (
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     f'  <url><loc>{BASE}</loc><lastmod>{lastmod}</lastmod>'
     '<changefreq>daily</changefreq><priority>1.0</priority></url>\n'
-    '</urlset>\n'
+    + f'  <url><loc>{BASE}essays.html</loc><lastmod>{lastmod}</lastmod>'
+    '<changefreq>daily</changefreq><priority>0.8</priority></url>\n'
+    + "".join(
+        f'  <url><loc>{BASE}essay-{e["slug"]}.html</loc><lastmod>{e["date"]}</lastmod>'
+        '<changefreq>monthly</changefreq><priority>0.7</priority></url>\n'
+        for e in essays)
+    + '</urlset>\n'
 )
 (ROOT / "sitemap.xml").write_text(sitemap)
 
@@ -188,6 +288,16 @@ def xesc(s):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 items = []
+for e in essays:
+    items.append(
+        "  <item>\n"
+        f"    <title>{xesc(e['title'])}</title>\n"
+        f"    <link>{BASE}essay-{e['slug']}.html</link>\n"
+        f"    <guid isPermaLink=\"true\">{BASE}essay-{e['slug']}.html</guid>\n"
+        f"    <pubDate>{rfc822(e['date'])}</pubDate>\n"
+        f"    <description>{xesc(e['desc'])}</description>\n"
+        "  </item>"
+    )
 for e in parsed:
     summary = strip_tags(md(e["body"])).replace("\n", " ").strip()[:500]
     items.append(
