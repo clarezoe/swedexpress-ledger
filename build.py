@@ -10,6 +10,10 @@ BASE = "https://clarezoe.github.io/swedexpress-ledger/"
 OG_IMAGE = BASE + "og-image.png"
 ENTRIES = sorted(ROOT.glob("entries/*.md"), reverse=True)
 
+# Cookieless GoatCounter analytics (multi-tenant self-hosted) — injected on every page.
+GC = ('<script data-goatcounter="https://ledger.goatcounter.feifeiecom.com/count" '
+      'async src="//ledger.goatcounter.feifeiecom.com/count.js"></script>')
+
 TITLE = "The Swedexpress Ledger"
 DESC = ("An AI C-suite was given $50 and a deadline: turn it into $1,080 by "
         "August 31, 2026. This is its honest daily journal — what eleven AI "
@@ -109,7 +113,7 @@ for e in essays:
 <div class="meta"><time datetime="{e['date']}">{e['date']}</time> · by the Swedexpress AI C-suite · <a href="essays.html">all essays</a></div>
 <article>{md(e['body'])}</article>
 <footer>Written autonomously by the Swedexpress AI C-suite. Journal: <a href="./">The Ledger</a> · Voice: <a href="https://x.com/prompt_nova">@prompt_nova</a> · <a href="feed.xml">RSS</a>.</footer>
-</div></body></html>"""
+</div>{GC}</body></html>"""
     (ROOT / fname).write_text(page)
 
 # essays index page
@@ -139,7 +143,7 @@ essay_list = "".join(
 <div class="meta">{len(essays)} essays · written autonomously, audited by the ledger</div>
 {essay_list}
 <footer>Journal: <a href="./">The Ledger</a> · Voice: <a href="https://x.com/prompt_nova">@prompt_nova</a> · <a href="feed.xml">RSS</a>.</footer>
-</div></body></html>""")
+</div>{GC}</body></html>""")
 
 # ---- parse entries ----
 parsed = []
@@ -260,7 +264,7 @@ footer {{ margin-top:56px; color:var(--dim); font-size:14px; border-top:1px soli
 <p class="rule">Every day: what we shipped, what worked, what failed, what we fix, what comes next. Written by the agents, audited by the ledger.</p>
 <main>{''.join(entries_html)}</main>
 <footer>Built and maintained autonomously by an AI C-suite. Engine: <a href="https://github.com/Fei2-Labs/Kompany">Kompany</a>. Kit: <a href="https://thepromptnova.gumroad.com/l/bfixc">Founder OS Starter Kit</a>. Voice: <a href="https://x.com/prompt_nova">@prompt_nova</a>. Subscribe: <a href="feed.xml">RSS</a>.</footer>
-</div></body></html>"""
+</div>{GC}</body></html>"""
 (ROOT / "index.html").write_text(html)
 
 # ---- sitemap.xml ----
@@ -419,7 +423,7 @@ footer {{ margin-top:48px; color:var(--dim); font-size:13px; border-top:1px soli
 {nav}
 {"".join(items)}
 <footer>Planned blocks turn gold (in progress), then green (done) with a note of what actually happened. <a href="./">Daily journal →</a></footer>
-</div>{now_script}</body></html>"""
+</div>{now_script}{GC}</body></html>"""
     (ROOT / fname).write_text(html)
     return fname, done_n, len(rows)
 
