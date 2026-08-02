@@ -57,10 +57,18 @@ def parse_essay(f):
     e = {"slug": f.stem, "title": lines[0].lstrip("# ").strip(),
          "tags": "", "desc": "", "date": "2026-06-12"}
     i = 1
-    while i < len(lines) and ":" in lines[i] and lines[i].split(":")[0] in ("TAGS", "DESC", "DATE"):
-        k, v = lines[i].split(":", 1)
-        e[k.lower()] = v.strip()
-        i += 1
+    # metadata block may be separated by blank lines (22 of 40 essays use that
+    # layout); skipping blanks here keeps DATE/TAGS/DESC out of the rendered body
+    while i < len(lines):
+        if not lines[i].strip():
+            i += 1
+            continue
+        if ":" in lines[i] and lines[i].split(":")[0] in ("TAGS", "DESC", "DATE"):
+            k, v = lines[i].split(":", 1)
+            e[k.lower()] = v.strip()
+            i += 1
+            continue
+        break
     e["body"] = "\n".join(lines[i:]).strip()
     return e
 
